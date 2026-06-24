@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>识字卡 · Character Cards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Noto+Serif+SC:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg1:#FDF4E7; --bg2:#F6E7D2;
+    --paper:#FFFCF6;
+    --ink:#241F1C; --ink-soft:#7A716A;
+    --grid:rgba(206,84,66,.30);
+    --jade:#1FA678; --jade-deep:#15825E;
+    --coral:#FF6F5C; --coral-deep:#E8503D;
+    --gold:#F4B63E;
+    --line:rgba(60,40,30,.10);
+    --shadow:0 18px 40px -16px rgba(120,70,40,.45);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    margin:0; color:var(--ink);
+    font-family:"Baloo 2",system-ui,sans-serif;
+    background:linear-gradient(160deg,var(--bg1),var(--bg2));
+    background-attachment:fixed;
+    display:flex; justify-content:center;
+    min-height:100dvh; overflow-x:hidden;
+  }
+  .han{font-family:"Kaiti SC","Kaiti","STKaiti","楷体","KaiTi","Noto Serif SC",serif;}
+  .app{width:100%; max-width:460px; min-height:100dvh; display:flex; flex-direction:column;
+       padding:22px 20px calc(22px + env(safe-area-inset-bottom)); position:relative;}
+  .screen{display:none; flex:1; flex-direction:column; animation:fade .35s ease both}
+  .screen.on{display:flex}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  /* ---------- Setup ---------- */
+  .brand{display:flex; flex-direction:column; align-items:center; gap:2px; margin-top:6px}
+  .brand .mark{font-size:60px; line-height:1; color:var(--coral-deep);
+    text-shadow:2px 2px 0 #fff, 4px 4px 0 rgba(206,84,66,.18)}
+  .brand h1{margin:10px 0 0; font-size:23px; font-weight:800; letter-spacing:.2px}
+  .brand p{margin:2px 0 0; color:var(--ink-soft); font-weight:600; font-size:14px}
+  .count-badge{margin-top:4px; font-size:13px; font-weight:700; color:var(--jade-deep);
+    background:rgba(31,166,120,.12); padding:4px 12px; border-radius:999px}
+  .prog-line{margin-top:8px; font-size:13px; font-weight:600; color:var(--ink-soft); text-align:center; min-height:16px}
+  .prog-line b.easy{color:var(--jade-deep)} .prog-line b.hard{color:var(--coral-deep)}
+  .reset-link{display:block; margin:14px auto 0; background:none; border:none; cursor:pointer;
+    font-family:inherit; font-weight:600; font-size:13px; color:var(--ink-soft); text-decoration:underline; opacity:.8}
+  .reset-link:active{transform:scale(.96)}
+
+  .panel{background:var(--paper); border-radius:24px; padding:22px 20px; margin-top:26px;
+    box-shadow:var(--shadow); border:1px solid rgba(255,255,255,.7)}
+  .panel h2{margin:0 0 14px; font-size:17px; font-weight:700}
+  .sets{display:grid; grid-template-columns:repeat(2,1fr); gap:10px}
+  .set{border:2px solid var(--line); background:#fff; border-radius:16px; padding:12px 4px 10px;
+    font-family:inherit; font-weight:700; font-size:14px; color:var(--ink); cursor:pointer; line-height:1.15;
+    transition:transform .12s, border-color .15s, background .15s}
+  .set:hover{border-color:var(--gold)}
+  .set:active{transform:scale(.95)}
+  .set.sel{border-color:var(--coral); background:rgba(255,111,92,.10); color:var(--coral-deep)}
+  .set small{display:block; font-size:12px; font-weight:700; color:var(--ink-soft); margin-top:3px}
+  .set.sel small{color:var(--coral-deep)}
+  .set:disabled,.set.done{opacity:.55; cursor:default; border-color:var(--line)}
+  .set.done{background:rgba(31,166,120,.08)}
+  .set.done small{color:var(--jade-deep)}
+  .chips{display:grid; grid-template-columns:repeat(3,1fr); gap:10px}
+  .chip{border:2px solid var(--line); background:#fff; border-radius:16px; padding:14px 0;
+    font-family:inherit; font-weight:800; font-size:19px; color:var(--ink); cursor:pointer;
+    transition:transform .12s, border-color .15s, background .15s}
+  .chip:hover{border-color:var(--gold)}
+  .chip:active{transform:scale(.95)}
+  .chip.sel{border-color:var(--jade); background:rgba(31,166,120,.10); color:var(--jade-deep)}
+  .chip small{display:block; font-size:11px; font-weight:600; color:var(--ink-soft); margin-top:1px}
+
+  .custom{margin-top:14px; display:flex; align-items:center; gap:10px}
+  .custom label{font-weight:600; color:var(--ink-soft); font-size:14px}
+  .custom input{flex:1; font-family:inherit; font-weight:800; font-size:18px; text-align:center;
+    padding:11px; border:2px solid var(--line); border-radius:14px; background:#fff; color:var(--ink); min-width:0}
+  .custom input:focus{outline:none; border-color:var(--jade)}
+
+  .opt{margin-top:16px; display:flex; align-items:center; justify-content:space-between; gap:12px}
+  .opt span{font-weight:600; font-size:14px; color:var(--ink-soft)}
+  .toggle{width:52px; height:30px; border-radius:999px; background:#e4ddd2; border:none; cursor:pointer;
+    position:relative; transition:background .2s; flex:none}
+  .toggle.on{background:var(--jade)}
+  .toggle::after{content:""; position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:50%;
+    background:#fff; transition:transform .2s; box-shadow:0 2px 4px rgba(0,0,0,.2)}
+  .toggle.on::after{transform:translateX(22px)}
+
+  .btn{font-family:inherit; font-weight:800; border:none; border-radius:18px; cursor:pointer;
+    font-size:19px; padding:16px; width:100%; color:#fff; transition:transform .12s, filter .15s}
+  .btn:active{transform:scale(.97)}
+  .btn-go{background:linear-gradient(135deg,var(--jade),var(--jade-deep)); margin-top:22px;
+    box-shadow:0 12px 24px -10px rgba(21,130,94,.8)}
+  .btn-go:disabled{filter:grayscale(.6) opacity(.5); cursor:not-allowed; transform:none}
+
+  /* ---------- Card screen ---------- */
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:4px}
+  .topbar .end{background:none; border:none; font-family:inherit; font-weight:700; font-size:14px;
+    color:var(--ink-soft); cursor:pointer; padding:6px 8px}
+  .topbar .end:active{transform:scale(.94)}
+  .meta{font-weight:800; font-size:15px; color:var(--ink-soft)}
+  .meta b{color:var(--jade-deep)}
+  .progress{height:8px; border-radius:999px; background:rgba(60,40,30,.10); overflow:hidden; margin:6px 0 0}
+  .progress i{display:block; height:100%; width:0; border-radius:999px;
+    background:linear-gradient(90deg,var(--gold),var(--coral)); transition:width .3s}
+
+  .stage{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; gap:18px}
+  .verdict{position:absolute; top:8px; font-weight:800; font-size:22px; padding:6px 18px; border-radius:14px;
+    opacity:0; pointer-events:none; transition:opacity .1s; z-index:3}
+  .verdict.know{left:14px; color:var(--jade-deep); background:rgba(31,166,120,.16); transform:rotate(-8deg)}
+  .verdict.rev{right:14px; color:var(--coral-deep); background:rgba(255,111,92,.16); transform:rotate(8deg)}
+  .toast{position:absolute; top:-4px; left:50%; transform:translate(-50%,-8px); z-index:5;
+    background:var(--jade-deep); color:#fff; font-weight:800; font-size:16px; padding:9px 18px;
+    border-radius:999px; box-shadow:0 8px 20px -8px rgba(21,130,94,.9); white-space:nowrap;
+    opacity:0; pointer-events:none; transition:opacity .25s, transform .25s}
+  .toast.show{opacity:1; transform:translate(-50%,0)}
+  .toast .han{font-size:18px}
+
+  .card{width:min(80vw,330px); aspect-ratio:1/1; background:var(--paper); border-radius:26px;
+    box-shadow:var(--shadow); position:relative; touch-action:none; cursor:grab; user-select:none;
+    display:flex; align-items:center; justify-content:center; will-change:transform}
+  .card:active{cursor:grabbing}
+  .card svg.grid{position:absolute; inset:9%; width:82%; height:82%}
+  .han-big{font-size:min(46vw,190px); line-height:1; color:var(--ink); position:relative; z-index:2}
+  .pinyin{position:absolute; bottom:0; left:0; right:0; text-align:center; font-weight:700;
+    font-size:24px; color:var(--coral-deep); opacity:0; transition:opacity .25s; z-index:2;
+    padding:14px 0 16px; border-radius:0 0 26px 26px;
+    background:linear-gradient(to top, var(--paper) 60%, rgba(255,252,246,0))}
+  .pinyin.show{opacity:1}
+  .tip{font-size:13px; font-weight:600; color:var(--ink-soft); text-align:center; line-height:1.5}
+
+  .actions{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:10px}
+  .act{font-family:inherit; font-weight:800; font-size:17px; border:none; border-radius:18px; padding:16px 10px;
+    cursor:pointer; color:#fff; transition:transform .12s, filter .15s; display:flex; flex-direction:column; align-items:center; gap:2px}
+  .act small{font-weight:600; font-size:11px; opacity:.85}
+  .act:active{transform:scale(.96)}
+  .act.rev{background:linear-gradient(135deg,var(--coral),var(--coral-deep))}
+  .act.know{background:linear-gradient(135deg,var(--jade),var(--jade-deep))}
+
+  /* ---------- Summary ---------- */
+  .sum{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:6px}
+  .stars{font-size:34px; letter-spacing:4px; height:40px}
+  .score-big{font-size:54px; font-weight:800; line-height:1.05}
+  .score-big .han{color:var(--ink-soft); font-size:30px; font-weight:700; display:block; margin-bottom:-4px}
+  .score-big em{font-style:normal; color:var(--jade-deep)}
+  .praise{font-weight:700; font-size:18px; color:var(--coral-deep)}
+  .grad-note{font-weight:700; font-size:15px; color:var(--jade-deep); margin-top:6px; line-height:1.5}
+  .grad-note .han{font-size:20px; margin:0 1px}
+  .review-box{width:100%; background:var(--paper); border-radius:22px; padding:16px; margin-top:18px;
+    box-shadow:var(--shadow); max-height:38vh; overflow:auto}
+  .review-box h3{margin:0 0 12px; font-size:15px; font-weight:700; color:var(--ink-soft); display:flex; justify-content:space-between}
+  .rgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(64px,1fr)); gap:10px}
+  .rcell{background:#fff; border:2px solid var(--line); border-radius:14px; padding:8px 4px; text-align:center}
+  .rcell .han{font-size:30px; line-height:1.1; color:var(--ink)}
+  .rcell .p{font-size:12px; font-weight:700; color:var(--coral-deep); margin-top:2px}
+  .sum-actions{width:100%; display:flex; flex-direction:column; gap:12px; margin-top:18px}
+  .btn-rev{background:linear-gradient(135deg,var(--coral),var(--coral-deep))}
+  .btn-new{background:#fff; color:var(--ink); border:2px solid var(--line); box-shadow:none}
+  .perfect{font-size:40px; margin-top:6px}
+
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none!important; animation:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SETUP -->
+  <section id="setup" class="screen on">
+    <div class="brand">
+      <div class="mark han">字</div>
+      <h1>识字卡</h1>
+      <p>Chinese Character Flashcards</p>
+      <div class="count-badge" id="totalBadge">— characters ready</div>
+      <div class="prog-line" id="progLine"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Which words?</h2>
+      <div class="sets" id="sets">
+        <button class="set" data-g="o">Known words<small id="cntO"></small></button>
+        <button class="set sel" data-g="n">New words<small id="cntN"></small></button>
+      </div>
+
+      <h2 style="margin-top:20px">How many this round?</h2>
+      <div class="chips" id="chips"></div>
+      <div class="custom">
+        <label for="customN">or pick a number</label>
+        <input id="customN" type="number" inputmode="numeric" min="1" placeholder="…">
+      </div>
+      <div class="opt">
+        <span>Show pinyin when card is tapped</span>
+        <button class="toggle on" id="pyToggle" aria-label="Toggle pinyin hint"></button>
+      </div>
+      <div class="opt">
+        <span>Smart order — show tricky words more, easy ones less</span>
+        <button class="toggle on" id="smartToggle" aria-label="Toggle smart order"></button>
+      </div>
+      <button class="btn btn-go" id="startBtn" disabled>Start</button>
+      <button class="reset-link" id="resetBtn">Reset saved progress</button>
+    </div>
+  </section>
+
+  <!-- CARD -->
+  <section id="play" class="screen">
+    <div class="topbar">
+      <button class="end" id="endBtn">✕ End round</button>
+      <div class="meta">Card <b id="cur">1</b> / <span id="tot">10</span></div>
+      <div class="meta">认识 <b id="score">0</b></div>
+    </div>
+    <div class="progress"><i id="bar"></i></div>
+
+    <div class="stage">
+      <div class="toast" id="toast"></div>
+      <div class="verdict know" id="vKnow">认识 ✓</div>
+      <div class="verdict rev" id="vRev">复习 ✗</div>
+      <div class="card" id="card">
+        <svg class="grid" viewBox="0 0 100 100" aria-hidden="true">
+          <rect x="1.5" y="1.5" width="97" height="97" rx="3" fill="none" stroke="var(--grid)" stroke-width="1.2"/>
+          <line x1="50" y1="2" x2="50" y2="98" stroke="var(--grid)" stroke-width="1" stroke-dasharray="4 4"/>
+          <line x1="2" y1="50" x2="98" y2="50" stroke="var(--grid)" stroke-width="1" stroke-dasharray="4 4"/>
+          <line x1="2" y1="2" x2="98" y2="98" stroke="var(--grid)" stroke-width=".7" stroke-dasharray="3 5"/>
+          <line x1="98" y1="2" x2="2" y2="98" stroke="var(--grid)" stroke-width=".7" stroke-dasharray="3 5"/>
+        </svg>
+        <div class="han han-big" id="char">字</div>
+        <div class="pinyin han" id="pinyin"></div>
+      </div>
+      <div class="tip">Tap the card to hear the pinyin hint<br>Swipe&nbsp;→&nbsp;knows&nbsp;·&nbsp;Swipe&nbsp;←&nbsp;review</div>
+    </div>
+
+    <div class="actions">
+      <button class="act rev" id="btnRev">复习 Review<small>doesn't know yet</small></button>
+      <button class="act know" id="btnKnow">认识 Knows<small>got it right</small></button>
+    </div>
+  </section>
+
+  <!-- SUMMARY -->
+  <section id="summary" class="screen">
+    <div class="sum">
+      <div class="stars" id="stars"></div>
+      <div class="score-big"><span class="han">认识</span><em id="sCorrect">0</em> / <span id="sTotal">0</span></div>
+      <div class="praise" id="praise"></div>
+      <div class="grad-note" id="gradNote"></div>
+      <div id="reviewWrap" style="width:100%"></div>
+    </div>
+    <div class="sum-actions">
+      <button class="btn btn-rev" id="reviseBtn" style="display:none"></button>
+      <button class="btn btn-new" id="newBtn">New round</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const WORDS = [{"c": "明", "p": "míng", "g": "o"}, {"c": "丽", "p": "lì", "g": "o"}, {"c": "拍", "p": "pāi", "g": "o"}, {"c": "球", "p": "qiú", "g": "o"}, {"c": "在", "p": "zài", "g": "o"}, {"c": "也", "p": "yě", "g": "o"}, {"c": "大", "p": "dà", "g": "o"}, {"c": "小", "p": "xiǎo", "g": "o"}, {"c": "了", "p": "le", "g": "o"}, {"c": "笑", "p": "xiào", "g": "o"}, {"c": "一", "p": "yī", "g": "o"}, {"c": "手", "p": "shǒu", "g": "o"}, {"c": "看", "p": "kàn", "g": "o"}, {"c": "花", "p": "huā", "g": "o"}, {"c": "白", "p": "bái", "g": "o"}, {"c": "红", "p": "hóng", "g": "o"}, {"c": "这", "p": "zhè", "g": "o"}, {"c": "是", "p": "shì", "g": "o"}, {"c": "真", "p": "zhēn", "g": "o"}, {"c": "美", "p": "měi", "g": "o"}, {"c": "什", "p": "shén", "g": "o"}, {"c": "么", "p": "me", "g": "o"}, {"c": "说", "p": "shuō", "g": "o"}, {"c": "不", "p": "bù", "g": "o"}, {"c": "蝴", "p": "hú", "g": "o"}, {"c": "蝶", "p": "dié", "g": "o"}, {"c": "哥", "p": "gē", "g": "o"}, {"c": "妹", "p": "mèi", "g": "o"}, {"c": "你", "p": "nǐ", "g": "o"}, {"c": "我", "p": "wǒ", "g": "o"}, {"c": "的", "p": "de", "g": "o"}, {"c": "妈", "p": "mā", "g": "o"}, {"c": "们", "p": "men", "g": "o"}, {"c": "和", "p": "hé", "g": "o"}, {"c": "得", "p": "dé", "g": "o"}, {"c": "好", "p": "hǎo", "g": "o"}, {"c": "有", "p": "yǒu", "g": "o"}, {"c": "个", "p": "gè", "g": "o"}, {"c": "还", "p": "hái", "g": "o"}, {"c": "爸", "p": "bà", "g": "o"}, {"c": "画", "p": "huà", "g": "o"}, {"c": "儿", "p": "ér", "g": "o"}, {"c": "上", "p": "shàng", "g": "o"}, {"c": "只", "p": "zhǐ", "g": "o"}, {"c": "下", "p": "xià", "g": "o"}, {"c": "草", "p": "cǎo", "g": "o"}, {"c": "哪", "p": "nǎ", "g": "o"}, {"c": "没", "p": "méi", "g": "o"}, {"c": "兔", "p": "tù", "g": "o"}, {"c": "吃", "p": "chī", "g": "o"}, {"c": "跳", "p": "tiào", "g": "o"}, {"c": "走", "p": "zǒu", "g": "o"}, {"c": "来", "p": "lái", "g": "o"}, {"c": "回", "p": "huí", "g": "o"}, {"c": "里", "p": "lǐ", "g": "o"}, {"c": "鱼", "p": "yú", "g": "o"}, {"c": "水", "p": "shuǐ", "g": "o"}, {"c": "游", "p": "yóu", "g": "o"}, {"c": "快", "p": "kuài", "g": "o"}, {"c": "慢", "p": "màn", "g": "o"}, {"c": "过", "p": "guò", "g": "o"}, {"c": "去", "p": "qù", "g": "o"}, {"c": "很", "p": "hěn", "g": "o"}, {"c": "猫", "p": "māo", "g": "o"}, {"c": "要", "p": "yào", "g": "o"}, {"c": "会", "p": "huì", "g": "o"}, {"c": "出", "p": "chū", "g": "o"}, {"c": "请", "p": "qǐng", "g": "o"}, {"c": "捉", "p": "zhuō", "g": "o"}, {"c": "玩", "p": "wán", "g": "o"}, {"c": "吗", "p": "ma", "g": "o"}, {"c": "踢", "p": "tī", "g": "o"}, {"c": "给", "p": "gěi", "g": "o"}, {"c": "就", "p": "jiù", "g": "o"}, {"c": "飞", "p": "fēi", "g": "o"}, {"c": "到", "p": "dào", "g": "o"}, {"c": "树", "p": "shù", "g": "o"}, {"c": "爬", "p": "pá", "g": "o"}, {"c": "把", "p": "bǎ", "g": "o"}, {"c": "谢", "p": "xiè", "g": "o"}, {"c": "家", "p": "jiā", "g": "o"}, {"c": "住", "p": "zhù", "g": "o"}, {"c": "门", "p": "mén", "g": "o"}, {"c": "后", "p": "hòu", "g": "o"}, {"c": "前", "p": "qián", "g": "o"}, {"c": "鸟", "p": "niǎo", "g": "o"}, {"c": "都", "p": "dōu", "g": "o"}, {"c": "面", "p": "miàn", "g": "o"}, {"c": "河", "p": "hé", "g": "o"}, {"c": "开", "p": "kāi", "g": "o"}, {"c": "心", "p": "xīn", "g": "o"}, {"c": "多", "p": "duō", "g": "o"}, {"c": "海", "p": "hǎi", "g": "o"}, {"c": "边", "p": "biān", "g": "o"}, {"c": "蓝", "p": "lán", "g": "o"}, {"c": "天", "p": "tiān", "g": "o"}, {"c": "船", "p": "chuán", "g": "o"}, {"c": "人", "p": "rén", "g": "o"}, {"c": "那", "p": "nà", "g": "o"}, {"c": "爱", "p": "ài", "g": "o"}, {"c": "坐", "p": "zuò", "g": "o"}, {"c": "外", "p": "wài", "g": "o"}, {"c": "公", "p": "gōng", "g": "o"}, {"c": "学", "p": "xué", "g": "o"}, {"c": "早", "p": "zǎo", "g": "o"}, {"c": "车", "p": "chē", "g": "o"}, {"c": "校", "p": "xiào", "g": "o"}, {"c": "朋", "p": "péng", "g": "o"}, {"c": "友", "p": "yǒu", "g": "o"}, {"c": "老", "p": "lǎo", "g": "o"}, {"c": "师", "p": "shī", "g": "o"}, {"c": "课", "p": "kè", "g": "o"}, {"c": "生", "p": "shēng", "g": "o"}, {"c": "站", "p": "zhàn", "g": "o"}, {"c": "起", "p": "qǐ", "g": "o"}, {"c": "迟", "p": "chí", "g": "o"}, {"c": "对", "p": "duì", "g": "o"}, {"c": "象", "p": "xiàng", "g": "o"}, {"c": "虎", "p": "hǔ", "g": "o"}, {"c": "狗", "p": "gǒu", "g": "o"}, {"c": "做", "p": "zuò", "g": "o"}, {"c": "咪", "p": "mī", "g": "o"}, {"c": "叫", "p": "jiào", "g": "o"}, {"c": "口", "p": "kǒu", "g": "o"}, {"c": "汪", "p": "wāng", "g": "o"}, {"c": "羊", "p": "yáng", "g": "o"}, {"c": "咩", "p": "miē", "g": "o"}, {"c": "又", "p": "yòu", "g": "o"}, {"c": "咬", "p": "yǎo", "g": "o"}, {"c": "鸡", "p": "jī", "g": "o"}, {"c": "喔", "p": "ō", "g": "o"}, {"c": "用", "p": "yòng", "g": "o"}, {"c": "脚", "p": "jiǎo", "g": "o"}, {"c": "四", "p": "sì", "g": "o"}, {"c": "两", "p": "liǎng", "g": "o"}, {"c": "鼻", "p": "bí", "g": "o"}, {"c": "子", "p": "zi", "g": "o"}, {"c": "长", "p": "zhǎng", "g": "o"}, {"c": "左", "p": "zuǒ", "g": "o"}, {"c": "右", "p": "yòu", "g": "o"}, {"c": "耳", "p": "ěr", "g": "o"}, {"c": "朵", "p": "duǒ", "g": "o"}, {"c": "眼", "p": "yǎn", "g": "o"}, {"c": "睛", "p": "jīng", "g": "o"}, {"c": "嘴", "p": "zuǐ", "g": "o"}, {"c": "巴", "p": "bā", "g": "o"}, {"c": "东", "p": "dōng", "g": "o"}, {"c": "西", "p": "xī", "g": "o"}, {"c": "洗", "p": "xǐ", "g": "o"}, {"c": "拿", "p": "ná", "g": "o"}, {"c": "蛋", "p": "dàn", "g": "o"}, {"c": "糕", "p": "gāo", "g": "o"}, {"c": "想", "p": "xiǎng", "g": "o"}, {"c": "问", "p": "wèn", "g": "o"}, {"c": "再", "p": "zài", "g": "o"}, {"c": "饱", "p": "bǎo", "g": "o"}, {"c": "谁", "p": "shuí", "g": "o"}, {"c": "少", "p": "shǎo", "g": "o"}, {"c": "喝", "p": "hē", "g": "o"}, {"c": "杯", "p": "bēi", "g": "o"}, {"c": "答", "p": "dá", "g": "o"}, {"c": "圆", "p": "yuán", "g": "o"}, {"c": "怎", "p": "zěn", "g": "o"}, {"c": "样", "p": "yàng", "g": "o"}, {"c": "形", "p": "xíng", "g": "o"}, {"c": "状", "p": "zhuàng", "g": "o"}, {"c": "正", "p": "zhèng", "g": "o"}, {"c": "方", "p": "fāng", "g": "o"}, {"c": "月", "p": "yuè", "g": "o"}, {"c": "亮", "p": "liàng", "g": "o"}, {"c": "时", "p": "shí", "g": "o"}, {"c": "指", "p": "zhǐ", "g": "o"}, {"c": "着", "p": "zhe", "g": "o"}, {"c": "拉", "p": "lā", "g": "o"}, {"c": "动", "p": "dòng", "g": "o"}, {"c": "物", "p": "wù", "g": "o"}, {"c": "跑", "p": "pǎo", "g": "o"}, {"c": "汽", "p": "qì", "g": "o"}, {"c": "毛", "p": "máo", "g": "o"}, {"c": "虫", "p": "chóng", "g": "o"}, {"c": "气", "p": "qì", "g": "o"}, {"c": "像", "p": "xiàng", "g": "o"}, {"c": "可", "p": "kě", "g": "o"}, {"c": "母", "p": "mǔ", "g": "o"}, {"c": "丹", "p": "dān", "g": "o"}, {"c": "植", "p": "zhí", "g": "o"}, {"c": "养", "p": "yǎng", "g": "o"}, {"c": "电", "p": "diàn", "g": "o"}, {"c": "路", "p": "lù", "g": "o"}, {"c": "园", "p": "yuán", "g": "o"}, {"c": "高", "p": "gāo", "g": "o"}, {"c": "摇", "p": "yáo", "g": "o"}, {"c": "黑", "p": "hēi", "g": "o"}, {"c": "猴", "p": "hóu", "g": "o"}, {"c": "以", "p": "yǐ", "g": "o"}, {"c": "食", "p": "shí", "g": "o"}, {"c": "蛇", "p": "shé", "g": "o"}, {"c": "怕", "p": "pà", "g": "o"}, {"c": "脸", "p": "liǎn", "g": "o"}, {"c": "鼠", "p": "shǔ", "g": "o"}, {"c": "狮", "p": "shī", "g": "o"}, {"c": "找", "p": "zhǎo", "g": "o"}, {"c": "他", "p": "tā", "g": "o"}, {"c": "书", "p": "shū", "g": "o"}, {"c": "读", "p": "dú", "g": "o"}, {"c": "功", "p": "gōng", "g": "o"}, {"c": "最", "p": "zuì", "g": "o"}, {"c": "工", "p": "gōng", "g": "o"}, {"c": "蜜", "p": "mì", "g": "o"}, {"c": "蜂", "p": "fēng", "g": "o"}, {"c": "唱", "p": "chàng", "g": "o"}, {"c": "歌", "p": "gē", "g": "o"}, {"c": "采", "p": "cǎi", "g": "o"}, {"c": "孩", "p": "hái", "g": "o"}, {"c": "放", "p": "fàng", "g": "o"}, {"c": "见", "p": "jiàn", "g": "o"}, {"c": "星", "p": "xīng", "g": "o"}, {"c": "期", "p": "qī", "g": "o"}, {"c": "日", "p": "rì", "g": "o"}, {"c": "窗", "p": "chuāng", "g": "o"}, {"c": "进", "p": "jìn", "g": "o"}, {"c": "阿", "p": "ā", "g": "o"}, {"c": "姨", "p": "yí", "g": "o"}, {"c": "安", "p": "ān", "g": "o"}, {"c": "青", "p": "qīng", "g": "o"}, {"c": "地", "p": "dì", "g": "o"}, {"c": "鞋", "p": "xié", "g": "o"}, {"c": "穿", "p": "chuān", "g": "o"}, {"c": "雨", "p": "yǔ", "g": "o"}, {"c": "屋", "p": "wū", "g": "o"}, {"c": "跟", "p": "gēn", "g": "o"}, {"c": "伞", "p": "sǎn", "g": "o"}, {"c": "中", "p": "zhōng", "g": "o"}, {"c": "湿", "p": "shī", "g": "o"}, {"c": "衣", "p": "yī", "g": "o"}, {"c": "服", "p": "fú", "g": "o"}, {"c": "今", "p": "jīn", "g": "o"}, {"c": "能", "p": "néng", "g": "o"}, {"c": "病", "p": "bìng", "g": "o"}, {"c": "喜", "p": "xǐ", "g": "o"}, {"c": "欢", "p": "huān", "g": "o"}, {"c": "呢", "p": "ne", "g": "o"}, {"c": "逃", "p": "táo", "g": "o"}, {"c": "睡", "p": "shuì", "g": "o"}, {"c": "觉", "p": "jué", "g": "o"}, {"c": "才", "p": "cái", "g": "o"}, {"c": "太", "p": "tài", "g": "o"}, {"c": "阳", "p": "yáng", "g": "o"}, {"c": "晚", "p": "wǎn", "g": "o"}, {"c": "嗡", "p": "wēng", "g": "o"}, {"c": "听", "p": "tīng", "g": "o"}, {"c": "声", "p": "shēng", "g": "o"}, {"c": "昨", "p": "zuó", "g": "o"}, {"c": "戏", "p": "xì", "g": "o"}, {"c": "带", "p": "dài", "g": "o"}, {"c": "话", "p": "huà", "g": "o"}, {"c": "知", "p": "zhī", "g": "o"}, {"c": "道", "p": "dào", "g": "o"}, {"c": "同", "p": "tóng", "g": "o"}, {"c": "打", "p": "dǎ", "g": "o"}, {"c": "饭", "p": "fàn", "g": "o"}, {"c": "凉", "p": "liáng", "g": "o"}, {"c": "马", "p": "mǎ", "g": "o"}, {"c": "木", "p": "mù", "g": "o"}, {"c": "瓜", "p": "guā", "g": "o"}, {"c": "吧", "p": "ba", "g": "o"}, {"c": "关", "p": "guān", "g": "o"}, {"c": "客", "p": "kè", "g": "o"}, {"c": "房", "p": "fáng", "g": "o"}, {"c": "间", "p": "jiān", "g": "o"}, {"c": "床", "p": "chuáng", "g": "o"}, {"c": "为", "p": "wèi", "g": "o"}, {"c": "轻", "p": "qīng", "g": "o"}, {"c": "包", "p": "bāo", "g": "o"}, {"c": "教", "p": "jiào", "g": "o"}, {"c": "第", "p": "dì", "g": "o"}, {"c": "张", "p": "zhāng", "g": "o"}, {"c": "纸", "p": "zhǐ", "g": "o"}, {"c": "字", "p": "zì", "g": "o"}, {"c": "每", "p": "měi", "g": "o"}, {"c": "事", "p": "shì", "g": "o"}, {"c": "写", "p": "xiě", "g": "o"}, {"c": "午", "p": "wǔ", "g": "o"}, {"c": "条", "p": "tiáo", "g": "o"}, {"c": "哈", "p": "hā", "g": "o"}, {"c": "二", "p": "èr", "g": "o"}, {"c": "剪", "p": "jiǎn", "g": "o"}, {"c": "刀", "p": "dāo", "g": "o"}, {"c": "鸭", "p": "yā", "g": "o"}, {"c": "三", "p": "sān", "g": "o"}, {"c": "黄", "p": "huáng", "g": "o"}, {"c": "颗", "p": "kē", "g": "o"}, {"c": "色", "p": "sè", "g": "o"}, {"c": "自", "p": "zì", "g": "o"}, {"c": "己", "p": "jǐ", "g": "o"}, {"c": "哭", "p": "kū", "g": "o"}, {"c": "五", "p": "wǔ", "g": "o"}, {"c": "猜", "p": "cāi", "g": "o"}, {"c": "吐", "p": "tǔ", "g": "o"}, {"c": "六", "p": "liù", "g": "o"}, {"c": "新", "p": "xīn", "g": "o"}, {"c": "山", "p": "shān", "g": "o"}, {"c": "舞", "p": "wǔ", "g": "o"}, {"c": "桌", "p": "zhuō", "g": "o"}, {"c": "椅", "p": "yǐ", "g": "o"}, {"c": "脑", "p": "nǎo", "g": "o"}, {"c": "些", "p": "xiē", "g": "o"}, {"c": "姓", "p": "xìng", "g": "o"}, {"c": "名", "p": "míng", "g": "o"}, {"c": "年", "p": "nián", "g": "o"}, {"c": "岁", "p": "suì", "g": "o"}, {"c": "等", "p": "děng", "g": "o"}, {"c": "呀", "p": "ya", "g": "o"}, {"c": "情", "p": "qíng", "g": "o"}, {"c": "头", "p": "tóu", "g": "o"}, {"c": "牛", "p": "niú", "g": "o"}, {"c": "身", "p": "shēn", "g": "o"}, {"c": "休", "p": "xiū", "g": "o"}, {"c": "它", "p": "tā", "g": "o"}, {"c": "尾", "p": "wěi", "g": "o"}, {"c": "忍", "p": "rěn", "g": "o"}, {"c": "颜", "p": "yán", "g": "o"}, {"c": "擦", "p": "cā", "g": "o"}, {"c": "啊", "p": "a", "g": "o"}, {"c": "故", "p": "gù", "g": "o"}, {"c": "音", "p": "yīn", "g": "o"}, {"c": "乐", "p": "lè", "g": "o"}, {"c": "卡", "p": "kǎ", "g": "o"}, {"c": "婆", "p": "pó", "g": "o"}, {"c": "合", "p": "hé", "g": "o"}, {"c": "作", "p": "zuò", "g": "o"}, {"c": "晴", "p": "qíng", "g": "o"}, {"c": "风", "p": "fēng", "g": "o"}, {"c": "吹", "p": "chuī", "g": "o"}, {"c": "童", "p": "tóng", "g": "o"}, {"c": "场", "p": "chǎng", "g": "o"}, {"c": "荡", "p": "dàng", "g": "o"}, {"c": "秋", "p": "qiū", "g": "o"}, {"c": "千", "p": "qiān", "g": "o"}, {"c": "向", "p": "xiàng", "g": "o"}, {"c": "紧", "p": "jǐn", "g": "o"}, {"c": "桥", "p": "qiáo", "g": "o"}, {"c": "宝", "p": "bǎo", "g": "o"}, {"c": "糖", "p": "táng", "g": "o"}, {"c": "果", "p": "guǒ", "g": "o"}, {"c": "饼", "p": "bǐng", "g": "o"}, {"c": "溜", "p": "liū", "g": "o"}, {"c": "滑", "p": "huá", "g": "o"}, {"c": "梯", "p": "tī", "g": "o"}, {"c": "敢", "p": "gǎn", "g": "o"}, {"c": "先", "p": "xiān", "g": "o"}, {"c": "数", "p": "shù", "g": "o"}, {"c": "她", "p": "tā", "g": "o"}, {"c": "松", "p": "sōng", "g": "o"}, {"c": "脱", "p": "tuō", "g": "o"}, {"c": "留", "p": "liú", "g": "o"}, {"c": "跷", "p": "qiāo", "g": "o"}, {"c": "板", "p": "bǎn", "g": "o"}, {"c": "各", "p": "gè", "g": "o"}, {"c": "低", "p": "dī", "g": "o"}, {"c": "趣", "p": "qù", "g": "o"}, {"c": "忽", "p": "hū", "g": "o"}, {"c": "然", "p": "rán", "g": "o"}, {"c": "坏", "p": "huài", "g": "o"}, {"c": "弄", "p": "nòng", "g": "o"}, {"c": "九", "p": "jiǔ", "g": "o"}, {"c": "点", "p": "diǎn", "g": "o"}, {"c": "钟", "p": "zhōng", "g": "o"}, {"c": "十", "p": "shí", "g": "o"}, {"c": "分", "p": "fēn", "g": "o"}, {"c": "窝", "p": "wō", "g": "o"}, {"c": "棵", "p": "kē", "g": "o"}, {"c": "枝", "p": "zhī", "g": "o"}, {"c": "跌", "p": "diē", "g": "o"}, {"c": "直", "p": "zhí", "g": "o"}, {"c": "往", "p": "wǎng", "g": "o"}, {"c": "原", "p": "yuán", "g": "o"}, {"c": "蜻", "p": "qīng", "g": "o"}, {"c": "蜓", "p": "tíng", "g": "o"}, {"c": "抱", "p": "bào", "g": "o"}, {"c": "害", "p": "hài", "g": "o"}, {"c": "比", "p": "bǐ", "g": "o"}, {"c": "更", "p": "gèng", "g": "o"}, {"c": "追", "p": "zhuī", "g": "o"}, {"c": "街", "p": "jiē", "g": "o"}, {"c": "否", "p": "fǒu", "g": "o"}, {"c": "肚", "p": "dù", "g": "o"}, {"c": "另", "p": "lìng", "g": "o"}, {"c": "吓", "p": "xià", "g": "o"}, {"c": "醒", "p": "xǐng", "g": "o"}, {"c": "梦", "p": "mèng", "g": "o"}, {"c": "买", "p": "mǎi", "g": "o"}, {"c": "礼", "p": "lǐ", "g": "o"}, {"c": "兴", "p": "xīng", "g": "o"}, {"c": "但", "p": "dàn", "g": "o"}, {"c": "选", "p": "xuǎn", "g": "o"}, {"c": "帮", "p": "bāng", "g": "o"}, {"c": "矮", "p": "ǎi", "g": "o"}, {"c": "绳", "p": "shéng", "g": "o"}, {"c": "乱", "p": "luàn", "g": "o"}, {"c": "运", "p": "yùn", "g": "o"}, {"c": "菜", "p": "cài", "g": "o"}, {"c": "肉", "p": "ròu", "g": "o"}, {"c": "定", "p": "dìng", "g": "o"}, {"c": "该", "p": "gāi", "g": "o"}, {"c": "牙", "p": "yá", "g": "o"}, {"c": "齿", "p": "chǐ", "g": "o"}, {"c": "刚", "p": "gāng", "g": "o"}, {"c": "支", "p": "zhī", "g": "o"}, {"c": "刷", "p": "shuā", "g": "o"}, {"c": "够", "p": "gòu", "g": "o"}, {"c": "必", "p": "bì", "g": "o"}, {"c": "短", "p": "duǎn", "g": "o"}, {"c": "铅", "p": "qiān", "g": "o"}, {"c": "笔", "p": "bǐ", "g": "o"}, {"c": "本", "p": "běn", "g": "o"}, {"c": "薄", "p": "báo", "g": "o"}, {"c": "处", "p": "chù", "g": "o"}, {"c": "候", "p": "hòu", "g": "o"}, {"c": "记", "p": "jì", "g": "o"}, {"c": "乖", "p": "guāi", "g": "o"}, {"c": "七", "p": "qī", "g": "n"}, {"c": "八", "p": "bā", "g": "n"}, {"c": "百", "p": "bǎi", "g": "n"}, {"c": "万", "p": "wàn", "g": "n"}, {"c": "半", "p": "bàn", "g": "n"}, {"c": "双", "p": "shuāng", "g": "n"}, {"c": "块", "p": "kuài", "g": "n"}, {"c": "钱", "p": "qián", "g": "n"}, {"c": "元", "p": "yuán", "g": "n"}, {"c": "角", "p": "jiǎo", "g": "n"}, {"c": "件", "p": "jiàn", "g": "n"}, {"c": "位", "p": "wèi", "g": "n"}, {"c": "群", "p": "qún", "g": "n"}, {"c": "零", "p": "líng", "g": "n"}, {"c": "几", "p": "jǐ", "g": "n"}, {"c": "倍", "p": "bèi", "g": "n"}, {"c": "串", "p": "chuàn", "g": "n"}, {"c": "排", "p": "pái", "g": "n"}, {"c": "队", "p": "duì", "g": "n"}, {"c": "层", "p": "céng", "g": "n"}, {"c": "片", "p": "piàn", "g": "n"}, {"c": "团", "p": "tuán", "g": "n"}, {"c": "堆", "p": "duī", "g": "n"}, {"c": "份", "p": "fèn", "g": "n"}, {"c": "您", "p": "nín", "g": "n"}, {"c": "弟", "p": "dì", "g": "n"}, {"c": "姐", "p": "jiě", "g": "n"}, {"c": "叔", "p": "shū", "g": "n"}, {"c": "伯", "p": "bó", "g": "n"}, {"c": "婶", "p": "shěn", "g": "n"}, {"c": "舅", "p": "jiù", "g": "n"}, {"c": "姑", "p": "gū", "g": "n"}, {"c": "爷", "p": "yé", "g": "n"}, {"c": "奶", "p": "nǎi", "g": "n"}, {"c": "孙", "p": "sūn", "g": "n"}, {"c": "亲", "p": "qīn", "g": "n"}, {"c": "男", "p": "nán", "g": "n"}, {"c": "女", "p": "nǚ", "g": "n"}, {"c": "咱", "p": "zán", "g": "n"}, {"c": "众", "p": "zhòng", "g": "n"}, {"c": "民", "p": "mín", "g": "n"}, {"c": "王", "p": "wáng", "g": "n"}, {"c": "主", "p": "zhǔ", "g": "n"}, {"c": "别", "p": "bié", "g": "n"}, {"c": "发", "p": "fā", "g": "n"}, {"c": "额", "p": "é", "g": "n"}, {"c": "眉", "p": "méi", "g": "n"}, {"c": "舌", "p": "shé", "g": "n"}, {"c": "喉", "p": "hóu", "g": "n"}, {"c": "颈", "p": "jǐng", "g": "n"}, {"c": "肩", "p": "jiān", "g": "n"}, {"c": "臂", "p": "bì", "g": "n"}, {"c": "肘", "p": "zhǒu", "g": "n"}, {"c": "腕", "p": "wàn", "g": "n"}, {"c": "掌", "p": "zhǎng", "g": "n"}, {"c": "甲", "p": "jiǎ", "g": "n"}, {"c": "胸", "p": "xiōng", "g": "n"}, {"c": "背", "p": "bèi", "g": "n"}, {"c": "腰", "p": "yāo", "g": "n"}, {"c": "腿", "p": "tuǐ", "g": "n"}, {"c": "膝", "p": "xī", "g": "n"}, {"c": "趾", "p": "zhǐ", "g": "n"}, {"c": "皮", "p": "pí", "g": "n"}, {"c": "肤", "p": "fū", "g": "n"}, {"c": "血", "p": "xuè", "g": "n"}, {"c": "骨", "p": "gǔ", "g": "n"}, {"c": "肌", "p": "jī", "g": "n"}, {"c": "肝", "p": "gān", "g": "n"}, {"c": "肺", "p": "fèi", "g": "n"}, {"c": "胃", "p": "wèi", "g": "n"}, {"c": "肠", "p": "cháng", "g": "n"}, {"c": "江", "p": "jiāng", "g": "n"}, {"c": "湖", "p": "hú", "g": "n"}, {"c": "溪", "p": "xī", "g": "n"}, {"c": "池", "p": "chí", "g": "n"}, {"c": "塘", "p": "táng", "g": "n"}, {"c": "泉", "p": "quán", "g": "n"}, {"c": "浪", "p": "làng", "g": "n"}, {"c": "波", "p": "bō", "g": "n"}, {"c": "岸", "p": "àn", "g": "n"}, {"c": "滩", "p": "tān", "g": "n"}, {"c": "岛", "p": "dǎo", "g": "n"}, {"c": "林", "p": "lín", "g": "n"}, {"c": "森", "p": "sēn", "g": "n"}, {"c": "叶", "p": "yè", "g": "n"}, {"c": "根", "p": "gēn", "g": "n"}, {"c": "苗", "p": "miáo", "g": "n"}, {"c": "芽", "p": "yá", "g": "n"}, {"c": "田", "p": "tián", "g": "n"}, {"c": "土", "p": "tǔ", "g": "n"}, {"c": "石", "p": "shí", "g": "n"}, {"c": "沙", "p": "shā", "g": "n"}, {"c": "泥", "p": "ní", "g": "n"}, {"c": "尘", "p": "chén", "g": "n"}, {"c": "灰", "p": "huī", "g": "n"}, {"c": "火", "p": "huǒ", "g": "n"}, {"c": "烟", "p": "yān", "g": "n"}, {"c": "光", "p": "guāng", "g": "n"}, {"c": "影", "p": "yǐng", "g": "n"}, {"c": "云", "p": "yún", "g": "n"}, {"c": "雾", "p": "wù", "g": "n"}, {"c": "霜", "p": "shuāng", "g": "n"}, {"c": "雪", "p": "xuě", "g": "n"}, {"c": "冰", "p": "bīng", "g": "n"}, {"c": "露", "p": "lù", "g": "n"}, {"c": "雷", "p": "léi", "g": "n"}, {"c": "闪", "p": "shǎn", "g": "n"}, {"c": "虹", "p": "hóng", "g": "n"}, {"c": "空", "p": "kōng", "g": "n"}, {"c": "烫", "p": "tàng", "g": "n"}, {"c": "暖", "p": "nuǎn", "g": "n"}, {"c": "冷", "p": "lěng", "g": "n"}, {"c": "热", "p": "rè", "g": "n"}, {"c": "猪", "p": "zhū", "g": "n"}, {"c": "鹅", "p": "é", "g": "n"}, {"c": "龙", "p": "lóng", "g": "n"}, {"c": "熊", "p": "xióng", "g": "n"}, {"c": "鹿", "p": "lù", "g": "n"}, {"c": "狼", "p": "láng", "g": "n"}, {"c": "蛙", "p": "wā", "g": "n"}, {"c": "蚂", "p": "mǎ", "g": "n"}, {"c": "蚁", "p": "yǐ", "g": "n"}, {"c": "蜘", "p": "zhī", "g": "n"}, {"c": "蛛", "p": "zhū", "g": "n"}, {"c": "蚊", "p": "wén", "g": "n"}, {"c": "蝇", "p": "yíng", "g": "n"}, {"c": "鸽", "p": "gē", "g": "n"}, {"c": "鹰", "p": "yīng", "g": "n"}, {"c": "燕", "p": "yàn", "g": "n"}, {"c": "雀", "p": "què", "g": "n"}, {"c": "蚕", "p": "cán", "g": "n"}, {"c": "螃", "p": "páng", "g": "n"}, {"c": "蟹", "p": "xiè", "g": "n"}, {"c": "虾", "p": "xiā", "g": "n"}, {"c": "鲸", "p": "jīng", "g": "n"}, {"c": "驴", "p": "lǘ", "g": "n"}, {"c": "驼", "p": "tuó", "g": "n"}, {"c": "豆", "p": "dòu", "g": "n"}, {"c": "米", "p": "mǐ", "g": "n"}, {"c": "麦", "p": "mài", "g": "n"}, {"c": "稻", "p": "dào", "g": "n"}, {"c": "葱", "p": "cōng", "g": "n"}, {"c": "蒜", "p": "suàn", "g": "n"}, {"c": "姜", "p": "jiāng", "g": "n"}, {"c": "椒", "p": "jiāo", "g": "n"}, {"c": "苹", "p": "píng", "g": "n"}, {"c": "桃", "p": "táo", "g": "n"}, {"c": "梨", "p": "lí", "g": "n"}, {"c": "橘", "p": "jú", "g": "n"}, {"c": "橙", "p": "chéng", "g": "n"}, {"c": "柿", "p": "shì", "g": "n"}, {"c": "枣", "p": "zǎo", "g": "n"}, {"c": "葡", "p": "pú", "g": "n"}, {"c": "萄", "p": "táo", "g": "n"}, {"c": "莓", "p": "méi", "g": "n"}, {"c": "茄", "p": "jiā", "g": "n"}, {"c": "薯", "p": "shǔ", "g": "n"}, {"c": "笋", "p": "sǔn", "g": "n"}, {"c": "蘑", "p": "mó", "g": "n"}, {"c": "菇", "p": "gū", "g": "n"}, {"c": "粥", "p": "zhōu", "g": "n"}, {"c": "茶", "p": "chá", "g": "n"}, {"c": "油", "p": "yóu", "g": "n"}, {"c": "盐", "p": "yán", "g": "n"}, {"c": "酱", "p": "jiàng", "g": "n"}, {"c": "醋", "p": "cù", "g": "n"}, {"c": "汤", "p": "tāng", "g": "n"}, {"c": "馒", "p": "mán", "g": "n"}, {"c": "饺", "p": "jiǎo", "g": "n"}, {"c": "粉", "p": "fěn", "g": "n"}, {"c": "凳", "p": "dèng", "g": "n"}, {"c": "柜", "p": "guì", "g": "n"}, {"c": "架", "p": "jià", "g": "n"}, {"c": "灯", "p": "dēng", "g": "n"}, {"c": "镜", "p": "jìng", "g": "n"}, {"c": "锅", "p": "guō", "g": "n"}, {"c": "碗", "p": "wǎn", "g": "n"}, {"c": "盘", "p": "pán", "g": "n"}, {"c": "筷", "p": "kuài", "g": "n"}, {"c": "勺", "p": "sháo", "g": "n"}, {"c": "瓶", "p": "píng", "g": "n"}, {"c": "壶", "p": "hú", "g": "n"}, {"c": "桶", "p": "tǒng", "g": "n"}, {"c": "盆", "p": "pén", "g": "n"}, {"c": "扫", "p": "sǎo", "g": "n"}, {"c": "拖", "p": "tuō", "g": "n"}, {"c": "帚", "p": "zhǒu", "g": "n"}, {"c": "毯", "p": "tǎn", "g": "n"}, {"c": "被", "p": "bèi", "g": "n"}, {"c": "枕", "p": "zhěn", "g": "n"}, {"c": "席", "p": "xí", "g": "n"}, {"c": "帘", "p": "lián", "g": "n"}, {"c": "钉", "p": "dīng", "g": "n"}, {"c": "锤", "p": "chuí", "g": "n"}, {"c": "针", "p": "zhēn", "g": "n"}, {"c": "线", "p": "xiàn", "g": "n"}, {"c": "钥", "p": "yào", "g": "n"}, {"c": "匙", "p": "shi", "g": "n"}, {"c": "锁", "p": "suǒ", "g": "n"}, {"c": "裤", "p": "kù", "g": "n"}, {"c": "裙", "p": "qún", "g": "n"}, {"c": "帽", "p": "mào", "g": "n"}, {"c": "袜", "p": "wà", "g": "n"}, {"c": "围", "p": "wéi", "g": "n"}, {"c": "巾", "p": "jīn", "g": "n"}, {"c": "扣", "p": "kòu", "g": "n"}, {"c": "袋", "p": "dài", "g": "n"}, {"c": "领", "p": "lǐng", "g": "n"}, {"c": "袖", "p": "xiù", "g": "n"}, {"c": "词", "p": "cí", "g": "n"}, {"c": "句", "p": "jù", "g": "n"}, {"c": "文", "p": "wén", "g": "n"}, {"c": "算", "p": "suàn", "g": "n"}, {"c": "题", "p": "tí", "g": "n"}, {"c": "班", "p": "bān", "g": "n"}, {"c": "级", "p": "jí", "g": "n"}, {"c": "室", "p": "shì", "g": "n"}, {"c": "墨", "p": "mò", "g": "n"}, {"c": "尺", "p": "chǐ", "g": "n"}, {"c": "橡", "p": "xiàng", "g": "n"}, {"c": "章", "p": "zhāng", "g": "n"}, {"c": "段", "p": "duàn", "g": "n"}, {"c": "标", "p": "biāo", "g": "n"}, {"c": "躺", "p": "tǎng", "g": "n"}, {"c": "蹲", "p": "dūn", "g": "n"}, {"c": "推", "p": "tuī", "g": "n"}, {"c": "提", "p": "tí", "g": "n"}, {"c": "抬", "p": "tái", "g": "n"}, {"c": "扛", "p": "káng", "g": "n"}, {"c": "挑", "p": "tiāo", "g": "n"}, {"c": "搬", "p": "bān", "g": "n"}, {"c": "举", "p": "jǔ", "g": "n"}, {"c": "投", "p": "tóu", "g": "n"}, {"c": "接", "p": "jiē", "g": "n"}, {"c": "抓", "p": "zhuā", "g": "n"}, {"c": "握", "p": "wò", "g": "n"}, {"c": "摸", "p": "mō", "g": "n"}, {"c": "捏", "p": "niē", "g": "n"}, {"c": "揉", "p": "róu", "g": "n"}, {"c": "切", "p": "qiè", "g": "n"}, {"c": "削", "p": "xuē", "g": "n"}, {"c": "缝", "p": "fèng", "g": "n"}, {"c": "织", "p": "zhī", "g": "n"}, {"c": "涂", "p": "tú", "g": "n"}, {"c": "嚼", "p": "jué", "g": "n"}, {"c": "吞", "p": "tūn", "g": "n"}, {"c": "尝", "p": "cháng", "g": "n"}, {"c": "闻", "p": "wén", "g": "n"}, {"c": "喊", "p": "hǎn", "g": "n"}, {"c": "懂", "p": "dǒng", "g": "n"}, {"c": "忘", "p": "wàng", "g": "n"}, {"c": "卖", "p": "mài", "g": "n"}, {"c": "送", "p": "sòng", "g": "n"}, {"c": "收", "p": "shōu", "g": "n"}, {"c": "借", "p": "jiè", "g": "n"}, {"c": "试", "p": "shì", "g": "n"}, {"c": "修", "p": "xiū", "g": "n"}, {"c": "建", "p": "jiàn", "g": "n"}, {"c": "造", "p": "zào", "g": "n"}, {"c": "装", "p": "zhuāng", "g": "n"}, {"c": "倒", "p": "dào", "g": "n"}, {"c": "摆", "p": "bǎi", "g": "n"}, {"c": "挂", "p": "guà", "g": "n"}, {"c": "扔", "p": "rēng", "g": "n"}, {"c": "捡", "p": "jiǎn", "g": "n"}, {"c": "踩", "p": "cǎi", "g": "n"}, {"c": "踏", "p": "tà", "g": "n"}, {"c": "飘", "p": "piāo", "g": "n"}, {"c": "流", "p": "liú", "g": "n"}, {"c": "滴", "p": "dī", "g": "n"}, {"c": "洒", "p": "sǎ", "g": "n"}, {"c": "泼", "p": "pō", "g": "n"}, {"c": "胖", "p": "pàng", "g": "n"}, {"c": "瘦", "p": "shòu", "g": "n"}, {"c": "粗", "p": "cū", "g": "n"}, {"c": "细", "p": "xì", "g": "n"}, {"c": "宽", "p": "kuān", "g": "n"}, {"c": "窄", "p": "zhǎi", "g": "n"}, {"c": "厚", "p": "hòu", "g": "n"}, {"c": "深", "p": "shēn", "g": "n"}, {"c": "浅", "p": "qiǎn", "g": "n"}, {"c": "远", "p": "yuǎn", "g": "n"}, {"c": "近", "p": "jìn", "g": "n"}, {"c": "旧", "p": "jiù", "g": "n"}, {"c": "嫩", "p": "nèn", "g": "n"}, {"c": "软", "p": "ruǎn", "g": "n"}, {"c": "硬", "p": "yìng", "g": "n"}, {"c": "重", "p": "zhòng", "g": "n"}, {"c": "干", "p": "gàn", "g": "n"}, {"c": "紫", "p": "zǐ", "g": "n"}, {"c": "绿", "p": "lǜ", "g": "n"}, {"c": "棕", "p": "zōng", "g": "n"}, {"c": "香", "p": "xiāng", "g": "n"}, {"c": "臭", "p": "chòu", "g": "n"}, {"c": "甜", "p": "tián", "g": "n"}, {"c": "酸", "p": "suān", "g": "n"}, {"c": "苦", "p": "kǔ", "g": "n"}, {"c": "辣", "p": "là", "g": "n"}, {"c": "咸", "p": "xián", "g": "n"}, {"c": "丑", "p": "chǒu", "g": "n"}, {"c": "假", "p": "jiǎ", "g": "n"}, {"c": "错", "p": "cuò", "g": "n"}, {"c": "难", "p": "nán", "g": "n"}, {"c": "易", "p": "yì", "g": "n"}, {"c": "忙", "p": "máng", "g": "n"}, {"c": "闲", "p": "xián", "g": "n"}, {"c": "累", "p": "lèi", "g": "n"}, {"c": "饿", "p": "è", "g": "n"}, {"c": "渴", "p": "kě", "g": "n"}, {"c": "困", "p": "kùn", "g": "n"}, {"c": "净", "p": "jìng", "g": "n"}, {"c": "脏", "p": "zàng", "g": "n"}, {"c": "弯", "p": "wān", "g": "n"}, {"c": "斜", "p": "xié", "g": "n"}, {"c": "平", "p": "píng", "g": "n"}, {"c": "满", "p": "mǎn", "g": "n"}, {"c": "南", "p": "nán", "g": "n"}, {"c": "北", "p": "běi", "g": "n"}, {"c": "内", "p": "nèi", "g": "n"}, {"c": "旁", "p": "páng", "g": "n"}, {"c": "顶", "p": "dǐng", "g": "n"}, {"c": "底", "p": "dǐ", "g": "n"}, {"c": "央", "p": "yāng", "g": "n"}, {"c": "周", "p": "zhōu", "g": "n"}, {"c": "与", "p": "yǔ", "g": "n"}, {"c": "却", "p": "què", "g": "n"}, {"c": "因", "p": "yīn", "g": "n"}, {"c": "所", "p": "suǒ", "g": "n"}, {"c": "如", "p": "rú", "g": "n"}, {"c": "让", "p": "ràng", "g": "n"}, {"c": "从", "p": "cóng", "g": "n"}, {"c": "离", "p": "lí", "g": "n"}, {"c": "并", "p": "bìng", "g": "n"}, {"c": "而", "p": "ér", "g": "n"}, {"c": "且", "p": "qiě", "g": "n"}, {"c": "或", "p": "huò", "g": "n"}, {"c": "虽", "p": "suī", "g": "n"}, {"c": "既", "p": "jì", "g": "n"}, {"c": "即", "p": "jí", "g": "n"}, {"c": "将", "p": "jiāng", "g": "n"}, {"c": "已", "p": "yǐ", "g": "n"}, {"c": "经", "p": "jīng", "g": "n"}, {"c": "怒", "p": "nù", "g": "n"}, {"c": "愁", "p": "chóu", "g": "n"}, {"c": "愿", "p": "yuàn", "g": "n"}, {"c": "急", "p": "jí", "g": "n"}, {"c": "烦", "p": "fán", "g": "n"}, {"c": "慌", "p": "huāng", "g": "n"}, {"c": "羞", "p": "xiū", "g": "n"}, {"c": "惊", "p": "jīng", "g": "n"}, {"c": "闷", "p": "mèn", "g": "n"}, {"c": "悲", "p": "bēi", "g": "n"}, {"c": "痛", "p": "tòng", "g": "n"}, {"c": "疼", "p": "téng", "g": "n"}, {"c": "痒", "p": "yǎng", "g": "n"}, {"c": "怪", "p": "guài", "g": "n"}, {"c": "种", "p": "zhǒng", "g": "n"}, {"c": "类", "p": "lèi", "g": "n"}, {"c": "法", "p": "fǎ", "g": "n"}, {"c": "票", "p": "piào", "g": "n"}, {"c": "信", "p": "xìn", "g": "n"}, {"c": "报", "p": "bào", "g": "n"}, {"c": "旗", "p": "qí", "g": "n"}, {"c": "节", "p": "jié", "g": "n"}, {"c": "夜", "p": "yè", "g": "n"}, {"c": "棋", "p": "qí", "g": "n"}, {"c": "牌", "p": "pái", "g": "n"}, {"c": "积", "p": "jī", "g": "n"}, {"c": "秒", "p": "miǎo", "g": "n"}, {"c": "刻", "p": "kè", "g": "n"}, {"c": "季", "p": "jì", "g": "n"}, {"c": "春", "p": "chūn", "g": "n"}, {"c": "夏", "p": "xià", "g": "n"}, {"c": "冬", "p": "dōng", "g": "n"}, {"c": "初", "p": "chū", "g": "n"}, {"c": "末", "p": "mò", "g": "n"}, {"c": "旦", "p": "dàn", "g": "n"}, {"c": "古", "p": "gǔ", "g": "n"}, {"c": "城", "p": "chéng", "g": "n"}, {"c": "乡", "p": "xiāng", "g": "n"}, {"c": "村", "p": "cūn", "g": "n"}, {"c": "镇", "p": "zhèn", "g": "n"}, {"c": "停", "p": "tíng", "g": "n"}, {"c": "彩", "p": "cǎi", "g": "n"}, {"c": "墙", "p": "qiáng", "g": "n"}, {"c": "楼", "p": "lóu", "g": "n"}, {"c": "院", "p": "yuàn", "g": "n"}, {"c": "井", "p": "jǐng", "g": "n"}, {"c": "滚", "p": "gǔn", "g": "n"}, {"c": "转", "p": "zhuǎn", "g": "n"}, {"c": "晃", "p": "huǎng", "g": "n"}, {"c": "抖", "p": "dǒu", "g": "n"}, {"c": "颤", "p": "chàn", "g": "n"}, {"c": "助", "p": "zhù", "g": "n"}, {"c": "念", "p": "niàn", "g": "n"}, {"c": "备", "p": "bèi", "g": "n"}, {"c": "准", "p": "zhǔn", "g": "n"}, {"c": "始", "p": "shǐ", "g": "n"}, {"c": "终", "p": "zhōng", "g": "n"}, {"c": "完", "p": "wán", "g": "n"}, {"c": "成", "p": "chéng", "g": "n"}, {"c": "办", "p": "bàn", "g": "n"}, {"c": "务", "p": "wù", "g": "n"}, {"c": "决", "p": "jué", "g": "n"}, {"c": "须", "p": "xū", "g": "n"}, {"c": "需", "p": "xū", "g": "n"}, {"c": "应", "p": "yīng", "g": "n"}, {"c": "习", "p": "xí", "g": "n"}, {"c": "练", "p": "liàn", "g": "n"}, {"c": "复", "p": "fù", "g": "n"}, {"c": "温", "p": "wēn", "g": "n"}, {"c": "考", "p": "kǎo", "g": "n"}, {"c": "绩", "p": "jì", "g": "n"}, {"c": "努", "p": "nǔ", "g": "n"}, {"c": "力", "p": "lì", "g": "n"}, {"c": "息", "p": "xī", "g": "n"}, {"c": "贵", "p": "guì", "g": "n"}, {"c": "便", "p": "biàn", "g": "n"}, {"c": "宜", "p": "yí", "g": "n"}, {"c": "价", "p": "jià", "g": "n"}, {"c": "格", "p": "gé", "g": "n"}, {"c": "付", "p": "fù", "g": "n"}, {"c": "换", "p": "huàn", "g": "n"}, {"c": "味", "p": "wèi", "g": "n"}, {"c": "戴", "p": "dài", "g": "n"}, {"c": "梳", "p": "shū", "g": "n"}, {"c": "闹", "p": "nào", "g": "n"}, {"c": "吵", "p": "chǎo", "g": "n"}, {"c": "静", "p": "jìng", "g": "n"}, {"c": "告", "p": "gào", "g": "n"}, {"c": "诉", "p": "sù", "g": "n"}, {"c": "令", "p": "lìng", "g": "n"}, {"c": "参", "p": "cān", "g": "n"}, {"c": "加", "p": "jiā", "g": "n"}, {"c": "介", "p": "jiè", "g": "n"}, {"c": "绍", "p": "shào", "g": "n"}, {"c": "表", "p": "biǎo", "g": "n"}, {"c": "示", "p": "shì", "g": "n"}, {"c": "认", "p": "rèn", "g": "n"}, {"c": "亿", "p": "yì", "g": "n"}, {"c": "行", "p": "xíng", "g": "n"}, {"c": "搞", "p": "gǎo", "g": "n"}, {"c": "续", "p": "xù", "g": "n"}, {"c": "求", "p": "qiú", "g": "n"}, {"c": "救", "p": "jiù", "g": "n"}, {"c": "护", "p": "hù", "g": "n"}, {"c": "保", "p": "bǎo", "g": "n"}, {"c": "守", "p": "shǒu", "g": "n"}, {"c": "防", "p": "fáng", "g": "n"}, {"c": "治", "p": "zhì", "g": "n"}, {"c": "医", "p": "yī", "g": "n"}, {"c": "药", "p": "yào", "g": "n"}, {"c": "康", "p": "kāng", "g": "n"}, {"c": "健", "p": "jiàn", "g": "n"}, {"c": "壮", "p": "zhuàng", "g": "n"}, {"c": "雄", "p": "xióng", "g": "n"}, {"c": "琴", "p": "qín", "g": "n"}, {"c": "鼓", "p": "gǔ", "g": "n"}, {"c": "笛", "p": "dí", "g": "n"}, {"c": "号", "p": "hào", "g": "n"}, {"c": "剧", "p": "jù", "g": "n"}, {"c": "视", "p": "shì", "g": "n"}, {"c": "屏", "p": "píng", "g": "n"}, {"c": "机", "p": "jī", "g": "n"}, {"c": "网", "p": "wǎng", "g": "n"}, {"c": "轮", "p": "lún", "g": "n"}, {"c": "旅", "p": "lǚ", "g": "n"}, {"c": "阴", "p": "yīn", "g": "n"}, {"c": "冻", "p": "dòng", "g": "n"}, {"c": "棉", "p": "mián", "g": "n"}, {"c": "晒", "p": "shài", "g": "n"}, {"c": "照", "p": "zhào", "g": "n"}, {"c": "烤", "p": "kǎo", "g": "n"}, {"c": "煮", "p": "zhǔ", "g": "n"}, {"c": "蒸", "p": "zhēng", "g": "n"}, {"c": "炒", "p": "chǎo", "g": "n"}, {"c": "烧", "p": "shāo", "g": "n"}, {"c": "牵", "p": "qiān", "g": "n"}, {"c": "扶", "p": "fú", "g": "n"}, {"c": "搂", "p": "lǒu", "g": "n"}, {"c": "拥", "p": "yōng", "g": "n"}, {"c": "拜", "p": "bài", "g": "n"}, {"c": "摔", "p": "shuāi", "g": "n"}, {"c": "蹦", "p": "bèng", "g": "n"}, {"c": "抛", "p": "pāo", "g": "n"}, {"c": "涩", "p": "sè", "g": "n"}, {"c": "脆", "p": "cuì", "g": "n"}, {"c": "烂", "p": "làn", "g": "n"}, {"c": "熟", "p": "shú", "g": "n"}, {"c": "鲜", "p": "xiān", "g": "n"}, {"c": "胆", "p": "dǎn", "g": "n"}, {"c": "勇", "p": "yǒng", "g": "n"}, {"c": "怯", "p": "qiè", "g": "n"}, {"c": "骄", "p": "jiāo", "g": "n"}, {"c": "傲", "p": "ào", "g": "n"}, {"c": "谦", "p": "qiān", "g": "n"}, {"c": "虚", "p": "xū", "g": "n"}, {"c": "诚", "p": "chéng", "g": "n"}, {"c": "善", "p": "shàn", "g": "n"}, {"c": "良", "p": "liáng", "g": "n"}];
+
+// ---------- Persistent progress (per character) ----------
+// stats[char] = { s:seen, c:correct, k:current correct-streak }
+const STORE_KEY = 'hanzi_flashcards_stats_v1';
+let stats = {};
+function loadStats(){
+  try{ const raw = localStorage.getItem(STORE_KEY); stats = raw ? JSON.parse(raw) : {}; }
+  catch(e){ stats = {}; }
+}
+function saveStats(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(stats)); }catch(e){/* storage unavailable (e.g. preview) — runs without saving */}
+}
+loadStats();
+
+function recordAnswer(ch, known){
+  const r = stats[ch] || {s:0,c:0,k:0};
+  r.s += 1;
+  if(known){ r.c += 1; r.k = (r.k>0? r.k:0) + 1; }
+  else { r.k = 0; }
+  stats[ch] = r; saveStats();
+}
+
+// Weight = how often a word should appear. Higher = shown more.
+// Unseen -> solid baseline (introduce it). Easy (high streak/accuracy) -> low, floored above 0.
+// Missed -> boosted strongly. "Show hard more, easy less, never remove."
+const NEW_WEIGHT = 2.0, FLOOR = 0.15;
+function weight(ch){
+  const r = stats[ch];
+  if(!r || r.s===0) return NEW_WEIGHT;
+  const wrongs = r.s - r.c;
+  const w = (1 + wrongs*1.5) / (1 + 0.6*r.k);
+  return Math.max(FLOOR, w);
+}
+
+// Weighted sampling without replacement (Efraimidis–Spirakis):
+// key = random^(1/weight); take the n items with the largest keys.
+function weightedPick(arr, n){
+  if(n >= arr.length) return shuffle([...arr]);
+  return arr.map(w => ({w, key: Math.pow(Math.random(), 1/weight(w.c))}))
+            .sort((a,b)=> b.key - a.key)
+            .slice(0, n)
+            .map(o => o.w);
+}
+
+const $ = s => document.querySelector(s);
+const screens = {setup:$('#setup'), play:$('#play'), summary:$('#summary')};
+function show(name){ Object.values(screens).forEach(s=>s.classList.remove('on')); screens[name].classList.add('on'); }
+
+// ---- Setup state ----
+let chosen = 20;
+let showPinyin = true;
+let smartOrder = true;
+let selectedSet = 'n'; // 'o' known, 'n' new (current set)
+
+// ---- Staged new-word learning ----
+// New words flow through sets of 10. A word "graduates" into the Known pile
+// once it has been answered correctly GRADUATE_AT times (cumulative).
+const NEW_WORDS = WORDS.filter(w=>w.g==='n');
+const SET_SIZE = 10, GRADUATE_AT = 5;
+const SET_COUNT = Math.ceil(NEW_WORDS.length / SET_SIZE);
+
+function isGrad(ch){ const r=stats[ch]; return !!(r && r.c >= GRADUATE_AT); }
+function newSetWords(s){ return NEW_WORDS.slice(s*SET_SIZE, (s+1)*SET_SIZE); }
+// the first set that still has un-graduated words; -1 if every new word is learned
+function currentSetIdx(){
+  for(let s=0; s<SET_COUNT; s++){ if(newSetWords(s).some(w=>!isGrad(w.c))) return s; }
+  return -1;
+}
+function poolKnown(){ return WORDS.filter(w => w.g==='o' || isGrad(w.c)); }      // originals + graduated
+function poolNew(){ const s=currentSetIdx(); return s<0 ? [] : newSetWords(s).filter(w=>!isGrad(w.c)); }
+function pool(){ return selectedSet==='o' ? poolKnown() : poolNew(); }
+
+$('#totalBadge').textContent = WORDS.length + ' characters total';
+
+function updateSetCounts(){
+  const s = currentSetIdx();
+  $('#cntO').textContent = poolKnown().length + ' words';
+  const newBtn = document.querySelector('.set[data-g="n"]');
+  if(s < 0){ $('#cntN').textContent = 'All learned ✓'; newBtn.disabled = true; newBtn.classList.add('done'); }
+  else { $('#cntN').textContent = `Set ${s+1} of ${SET_COUNT}`; newBtn.disabled = false; newBtn.classList.remove('done'); }
+}
+
+const presetEls = [
+  {n:10},{n:20},{n:30},{n:50},{n:100},{n:'all'}
+];
+const chipsWrap = $('#chips');
+
+function buildChips(){
+  const max = pool().length;
+  chipsWrap.innerHTML = '';
+  presetEls.forEach(p=>{
+    if(p.n!=='all' && p.n > max) return;
+    const b = document.createElement('button');
+    b.className='chip';
+    if(p.n==='all'){ b.innerHTML = `All<small>(${max})</small>`; b.dataset.n='all'; }
+    else { b.textContent = p.n; b.dataset.n = p.n; }
+    b.addEventListener('click', ()=>{
+      chosen = p.n==='all' ? max : Math.min(p.n, max);
+      $('#customN').value='';
+      [...chipsWrap.children].forEach(c=>c.classList.remove('sel'));
+      b.classList.add('sel');
+      updateStart();
+    });
+    chipsWrap.appendChild(b);
+  });
+}
+
+function selectSet(g){
+  if(g==='n' && poolNew().length===0) g='o';   // all new words learned — fall back to Known
+  selectedSet = g;
+  [...document.querySelectorAll('.set')].forEach(s=>s.classList.toggle('sel', s.dataset.g===g));
+  buildChips();
+  // clamp current choice to new pool, refresh selection highlight
+  const max = pool().length;
+  if(isNaN(chosen) || chosen<1) chosen = Math.min(20, max);
+  chosen = Math.min(chosen, max);
+  const match = [...chipsWrap.children].find(c=> (c.dataset.n==='all'? max : +c.dataset.n) === chosen);
+  [...chipsWrap.children].forEach(c=>c.classList.remove('sel'));
+  if(match){ match.classList.add('sel'); $('#customN').value=''; }
+  else { $('#customN').value = chosen; }
+  $('#customN').max = max;
+  updateStart();
+  if(typeof refreshProgress==='function') refreshProgress();
+}
+
+function refreshSetup(){ updateSetCounts(); selectSet(selectedSet); }
+
+document.querySelectorAll('.set').forEach(s=>{
+  s.addEventListener('click', ()=>{ if(!s.disabled) selectSet(s.dataset.g); });
+});
+
+$('#customN').addEventListener('input', e=>{
+  let v = parseInt(e.target.value,10);
+  [...chipsWrap.children].forEach(c=>c.classList.remove('sel'));
+  if(!isNaN(v)){ chosen = Math.max(1, Math.min(v, pool().length)); }
+  else { chosen = NaN; }
+  updateStart();
+});
+$('#pyToggle').addEventListener('click', ()=>{
+  showPinyin = !showPinyin;
+  $('#pyToggle').classList.toggle('on', showPinyin);
+});
+$('#smartToggle').addEventListener('click', ()=>{
+  smartOrder = !smartOrder;
+  $('#smartToggle').classList.toggle('on', smartOrder);
+});
+function updateStart(){ $('#startBtn').disabled = !(chosen>=1); }
+
+// Progress readout: how many of the current set are easy (mastered) vs need practice
+function refreshProgress(){
+  const grad = NEW_WORDS.filter(w=>isGrad(w.c)).length;
+  const total = NEW_WORDS.length;
+  const el = $('#progLine');
+  if(grad >= total){ el.innerHTML = `🎉 All <b class="easy">${total}</b> new words learned!`; return; }
+  const s = currentSetIdx();
+  const setWords = newSetWords(s);
+  const setGrad = setWords.filter(w=>isGrad(w.c)).length;
+  el.innerHTML = `<b class="easy">${grad}</b> of ${total} new words learned · Set ${s+1}: <b>${setGrad}/${setWords.length}</b>`;
+}
+
+$('#resetBtn').addEventListener('click', ()=>{
+  if(confirm('Clear all saved progress for this device? This cannot be undone.')){
+    stats = {}; saveStats(); refreshSetup();
+  }
+});
+
+refreshSetup(); // initialise (defaults to New words — current set)
+
+$('#startBtn').addEventListener('click', ()=> startRound(buildDeck(chosen), false));
+
+// ---- Round state ----
+let deck=[], idx=0, correct=0, missed=[], reviewing=false, gradThisRound=[];
+
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function buildDeck(n){
+  const p = pool();
+  if(n >= p.length) return shuffle([...p]);
+  return smartOrder ? weightedPick(p, n) : shuffle([...p]).slice(0, n);
+}
+
+function startRound(cards, isReview){
+  deck = cards; idx=0; correct=0; missed=[]; reviewing=isReview; gradThisRound=[];
+  $('#tot').textContent = deck.length;
+  show('play');
+  renderCard();
+}
+
+function renderCard(){
+  const w = deck[idx];
+  const cardEl = $('#card');
+  cardEl.style.transition='none';
+  cardEl.style.transform='translateX(0) rotate(0)';
+  cardEl.style.opacity='1';
+  $('#char').textContent = w.c;
+  const py = $('#pinyin');
+  py.textContent = w.p;
+  py.classList.remove('show');
+  $('#cur').textContent = idx+1;
+  $('#score').textContent = correct;
+  $('#bar').style.width = (idx/deck.length*100) + '%';
+  $('#vKnow').style.opacity='0'; $('#vRev').style.opacity='0';
+}
+
+function commit(known){
+  const w = deck[idx];
+  const prevC = (stats[w.c] && stats[w.c].c) || 0;
+  recordAnswer(w.c, known);
+  // graduation: a NEW word reaching its 5th correct moves into the Known pile
+  if(known && w.g==='n' && prevC === GRADUATE_AT-1){
+    gradThisRound.push(w);
+    showToast(`⭐ Learned ${w.c} (${w.p})!`);
+  }
+  if(known) correct++; else missed.push(w);
+  const cardEl = $('#card');
+  const dir = known ? 1 : -1;
+  cardEl.style.transition='transform .32s ease, opacity .32s ease';
+  cardEl.style.transform = `translateX(${dir*120}%) rotate(${dir*14}deg)`;
+  cardEl.style.opacity='0';
+  setTimeout(()=>{
+    idx++;
+    $('#score').textContent = correct;
+    if(idx >= deck.length){ finishRound(); }
+    else renderCard();
+  }, 260);
+}
+
+$('#btnKnow').addEventListener('click', ()=>commit(true));
+$('#btnRev').addEventListener('click', ()=>commit(false));
+$('#endBtn').addEventListener('click', finishRound);
+
+// reveal pinyin
+function revealPinyin(){ if(showPinyin) $('#pinyin').classList.add('show'); }
+
+let toastTimer=null;
+function showToast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+// ---- Swipe / drag ----
+(function(){
+  const card = $('#card');
+  let down=false, sx=0, sy=0, dx=0, moved=false, t0=0;
+  const THRESH = 70;
+  card.addEventListener('pointerdown', e=>{
+    down=true; moved=false; sx=e.clientX; sy=e.clientY; dx=0; t0=Date.now();
+    card.style.transition='none'; card.setPointerCapture(e.pointerId);
+  });
+  card.addEventListener('pointermove', e=>{
+    if(!down) return;
+    dx = e.clientX - sx; const dy = e.clientY - sy;
+    if(Math.abs(dx)>8 || Math.abs(dy)>8) moved=true;
+    card.style.transform = `translateX(${dx}px) rotate(${dx*0.06}deg)`;
+    $('#vKnow').style.opacity = dx>20 ? Math.min(1, dx/THRESH) : 0;
+    $('#vRev').style.opacity  = dx<-20 ? Math.min(1, -dx/THRESH) : 0;
+  });
+  function release(){
+    if(!down) return; down=false;
+    const quick = Date.now()-t0 < 250;
+    if(Math.abs(dx) > THRESH){ commit(dx>0); return; }
+    if(!moved || (quick && Math.abs(dx)<8)){ // tap
+      revealPinyin();
+    }
+    card.style.transition='transform .25s ease';
+    card.style.transform='translateX(0) rotate(0)';
+    $('#vKnow').style.opacity='0'; $('#vRev').style.opacity='0';
+  }
+  card.addEventListener('pointerup', release);
+  card.addEventListener('pointercancel', release);
+})();
+
+// keyboard
+document.addEventListener('keydown', e=>{
+  if(!screens.play.classList.contains('on')) return;
+  if(e.key==='ArrowRight'){ commit(true); }
+  else if(e.key==='ArrowLeft'){ commit(false); }
+  else if(e.key===' '){ e.preventDefault(); revealPinyin(); }
+});
+
+// ---- Summary ----
+function finishRound(){
+  const total = idx; // cards actually shown (handles early End)
+  $('#sCorrect').textContent = correct;
+  $('#sTotal').textContent = total || deck.length;
+  const denom = total || deck.length || 1;
+  const pct = correct/denom;
+  const fullStars = Math.round(pct*5);
+  $('#stars').textContent = '★★★★★'.slice(0,fullStars) + '☆☆☆☆☆'.slice(0,5-fullStars);
+  const praises = ['Keep going — you\'ve got this! 加油！','Nice work! Let\'s practise the tricky ones.',
+                   'Great job today! 很棒！','Brilliant! Almost all correct! 太棒了！'];
+  let pi = pct>=0.95?3 : pct>=0.7?2 : pct>=0.4?1 : 0;
+  $('#praise').textContent = praises[pi];
+
+  const gn = $('#gradNote');
+  if(gradThisRound.length){
+    gn.innerHTML = `🎓 ${gradThisRound.length} new word${gradThisRound.length>1?'s':''} moved to the Known pile: ` +
+      gradThisRound.map(w=>`<span class="han">${w.c}</span>`).join(' ');
+  } else { gn.innerHTML=''; }
+
+  const wrap = $('#reviewWrap');
+  const reviseBtn = $('#reviseBtn');
+  if(missed.length){
+    let cells = missed.map(w=>`<div class="rcell"><div class="han">${w.c}</div><div class="p">${w.p}</div></div>`).join('');
+    wrap.innerHTML = `<div class="review-box"><h3><span>Word bank to revise</span><span>${missed.length}</span></h3><div class="rgrid">${cells}</div></div>`;
+    reviseBtn.style.display='block';
+    reviseBtn.textContent = `Revise these ${missed.length} now`;
+  } else {
+    wrap.innerHTML = `<div class="perfect">🎉 All correct! 全对！</div>`;
+    reviseBtn.style.display='none';
+  }
+  show('summary');
+}
+
+$('#reviseBtn').addEventListener('click', ()=> startRound(shuffle([...missed]), true));
+$('#newBtn').addEventListener('click', ()=>{ refreshSetup(); show('setup'); });
+</script>
+</body>
+</html>
