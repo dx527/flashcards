@@ -106,6 +106,17 @@
   .progress{height:8px; border-radius:999px; background:rgba(60,40,30,.10); overflow:hidden; margin:6px 0 0}
   .progress i{display:block; height:100%; width:0; border-radius:999px;
     background:linear-gradient(90deg,var(--gold),var(--coral)); transition:width .3s}
+  .timer{text-align:center; font-weight:800; font-size:22px; color:var(--jade-deep);
+    margin-top:8px; font-variant-numeric:tabular-nums; letter-spacing:.5px}
+  .sum-timer{font-weight:800; font-size:19px; color:var(--jade-deep); margin-top:8px; font-variant-numeric:tabular-nums}
+  .sum-timer.running{color:var(--coral-deep)}
+  .sum-timer .best{display:block; font-size:15px; color:var(--gold); font-weight:800; margin-top:2px}
+  .hs-panel h2{margin:0 0 12px}
+  .hs-row{display:flex; align-items:center; justify-content:space-between; padding:10px 4px; border-bottom:1px solid var(--line)}
+  .hs-row:last-child{border-bottom:none}
+  .hs-row .cards{font-weight:700; color:var(--ink)}
+  .hs-row .cards small{color:var(--ink-soft); font-weight:600}
+  .hs-row .time{font-weight:800; color:var(--jade-deep); font-variant-numeric:tabular-nums; font-size:18px}
 
   .stage{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; gap:18px}
   .verdict{position:absolute; top:8px; font-weight:800; font-size:22px; padding:6px 18px; border-radius:14px;
@@ -200,8 +211,21 @@
         <span>Smart order — show tricky words more, easy ones less</span>
         <button class="toggle on" id="smartToggle" aria-label="Toggle smart order"></button>
       </div>
+      <div class="opt">
+        <span>Sounds — happy chime for correct, soft tone for review</span>
+        <button class="toggle on" id="soundToggle" aria-label="Toggle sounds"></button>
+      </div>
+      <div class="opt">
+        <span>Timer &amp; high scores — race the clock through the whole round</span>
+        <button class="toggle" id="timerToggle" aria-label="Toggle timer"></button>
+      </div>
       <button class="btn btn-go" id="startBtn" disabled>Start</button>
       <button class="reset-link" id="resetBtn">Reset saved progress</button>
+    </div>
+
+    <div class="panel hs-panel" id="hsPanel" style="display:none">
+      <h2>🏆 Best times</h2>
+      <div id="hsList"></div>
     </div>
   </section>
 
@@ -213,6 +237,7 @@
       <div class="meta">认识 <b id="score">0</b></div>
     </div>
     <div class="progress"><i id="bar"></i></div>
+    <div class="timer" id="timer" style="display:none"></div>
 
     <div class="stage">
       <div class="toast" id="toast"></div>
@@ -244,6 +269,7 @@
       <div class="stars" id="stars"></div>
       <div class="score-big"><span class="han">认识</span><em id="sCorrect">0</em> / <span id="sTotal">0</span></div>
       <div class="praise" id="praise"></div>
+      <div class="sum-timer" id="sumTimer" style="display:none"></div>
       <div class="grad-note" id="gradNote"></div>
       <div id="reviewWrap" style="width:100%"></div>
     </div>
@@ -279,6 +305,60 @@ function recordAnswer(ch, known){
   stats[ch] = r; saveStats();
 }
 
+// ---------- Sounds (Web Audio, synthesised — no files, works offline) ----------
+let audioCtx = null;
+function ensureAudio(){
+  try{
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+  }catch(e){ audioCtx = null; }
+}
+function beep(freq, start, dur, type, gain){
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
+  o.connect(g); g.connect(audioCtx.destination);
+  g.gain.setValueAtTime(0.0001, start);
+  g.gain.exponentialRampToValueAtTime(gain, start + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  o.start(start); o.stop(start + dur + 0.02);
+}
+function playCorrect(){            // bright rising major arpeggio + sparkle
+  if(!soundOn) return; ensureAudio(); if(!audioCtx) return;
+  const t = audioCtx.currentTime;
+  [523.25, 659.25, 783.99, 1046.50].forEach((f,i)=> beep(f, t + i*0.085, 0.16, 'triangle', 0.16));
+}
+function playWrong(){              // gentle low two-note "aww" — soft, never harsh
+  if(!soundOn) return; ensureAudio(); if(!audioCtx) return;
+  const t = audioCtx.currentTime;
+  beep(311.13, t, 0.17, 'sine', 0.15);        // Eb4
+  beep(233.08, t + 0.13, 0.24, 'sine', 0.15); // Bb3
+}
+
+// ---------- High scores (fastest full attempt, by card count) ----------
+const HS_KEY = 'hanzi_flashcards_highscores_v1';
+let highscores = {};
+function loadHS(){ try{ const r = localStorage.getItem(HS_KEY); highscores = r ? JSON.parse(r) : {}; }catch(e){ highscores = {}; } }
+function saveHS(){ try{ localStorage.setItem(HS_KEY, JSON.stringify(highscores)); }catch(e){} }
+loadHS();
+function recordTime(cards, ms){
+  const k = String(cards), prev = highscores[k];
+  if(!prev || ms < prev.ms){ highscores[k] = {ms, date: Date.now()}; saveHS(); return true; }
+  return false;
+}
+function fmtTime(ms){
+  const s = Math.floor(ms/1000), m = Math.floor(s/60);
+  return m + ':' + String(s % 60).padStart(2,'0');
+}
+function renderHighscores(){
+  const keys = Object.keys(highscores).map(Number).sort((a,b)=> b - a);
+  const panel = $('#hsPanel'), list = $('#hsList');
+  if(!keys.length){ panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  list.innerHTML = keys.map(n =>
+    `<div class="hs-row"><span class="cards">${n} <small>card${n>1?'s':''}</small></span><span class="time">${fmtTime(highscores[n].ms)}</span></div>`
+  ).join('');
+}
+
 // Weight = how often a word should appear. Higher = shown more.
 // Unseen -> solid baseline (introduce it). Easy (high streak/accuracy) -> low, floored above 0.
 // Missed -> boosted strongly. "Show hard more, easy less, never remove."
@@ -309,6 +389,8 @@ function show(name){ Object.values(screens).forEach(s=>s.classList.remove('on'))
 let chosen = 20;
 let showPinyin = true;
 let smartOrder = true;
+let soundOn = true;
+let timerOn = false;
 let selectedSet = 'n'; // 'o' known, 'n' new (current set)
 
 // ---- Staged new-word learning ----
@@ -403,6 +485,15 @@ $('#smartToggle').addEventListener('click', ()=>{
   smartOrder = !smartOrder;
   $('#smartToggle').classList.toggle('on', smartOrder);
 });
+$('#soundToggle').addEventListener('click', ()=>{
+  soundOn = !soundOn;
+  $('#soundToggle').classList.toggle('on', soundOn);
+  if(soundOn){ ensureAudio(); playCorrect(); }   // confirm + unlock audio on enable
+});
+$('#timerToggle').addEventListener('click', ()=>{
+  timerOn = !timerOn;
+  $('#timerToggle').classList.toggle('on', timerOn);
+});
 function updateStart(){ $('#startBtn').disabled = !(chosen>=1); }
 
 // Progress readout: how many of the current set are easy (mastered) vs need practice
@@ -418,17 +509,36 @@ function refreshProgress(){
 }
 
 $('#resetBtn').addEventListener('click', ()=>{
-  if(confirm('Clear all saved progress for this device? This cannot be undone.')){
-    stats = {}; saveStats(); refreshSetup();
+  if(confirm('Clear all saved progress and best times for this device? This cannot be undone.')){
+    stats = {}; saveStats(); highscores = {}; saveHS(); refreshSetup(); renderHighscores();
   }
 });
 
 refreshSetup(); // initialise (defaults to New words — current set)
+renderHighscores();
 
 $('#startBtn').addEventListener('click', ()=> startRound(buildDeck(chosen), false));
 
 // ---- Round state ----
-let deck=[], idx=0, correct=0, missed=[], reviewing=false, gradThisRound=[];
+let deck=[], idx=0, correct=0, missed=[], reviewing=false, gradThisRound=[], endedEarly=false;
+
+// ---- Timed-attempt state ----
+// An "attempt" spans the initial round + every revision round, ending only
+// when a round finishes with zero words left to review.
+let attemptActive=false, attemptStart=0, attemptCards=0, timerInt=null;
+function startAttempt(n){
+  attemptActive=true; attemptStart=Date.now(); attemptCards=n;
+  $('#timer').style.display='block';
+  clearInterval(timerInt);
+  timerInt=setInterval(tickTimer, 200);
+  tickTimer();
+}
+function tickTimer(){
+  const s = '⏱ ' + fmtTime(Date.now()-attemptStart);
+  $('#timer').textContent = s;
+  if(screens.summary.classList.contains('on')) $('#sumTimer').textContent = s;
+}
+function stopTimer(){ clearInterval(timerInt); timerInt=null; }
 
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function buildDeck(n){
@@ -438,8 +548,10 @@ function buildDeck(n){
 }
 
 function startRound(cards, isReview){
-  deck = cards; idx=0; correct=0; missed=[]; reviewing=isReview; gradThisRound=[];
+  deck = cards; idx=0; correct=0; missed=[]; reviewing=isReview; gradThisRound=[]; endedEarly=false;
   $('#tot').textContent = deck.length;
+  if(!isReview && timerOn) startAttempt(cards.length);        // fresh attempt: start the clock
+  $('#timer').style.display = (timerOn && attemptActive) ? 'block' : 'none';
   show('play');
   renderCard();
 }
@@ -462,6 +574,7 @@ function renderCard(){
 
 function commit(known){
   const w = deck[idx];
+  if(known) playCorrect(); else playWrong();
   const prevC = (stats[w.c] && stats[w.c].c) || 0;
   recordAnswer(w.c, known);
   // graduation: a NEW word reaching its 5th correct moves into the Known pile
@@ -485,7 +598,7 @@ function commit(known){
 
 $('#btnKnow').addEventListener('click', ()=>commit(true));
 $('#btnRev').addEventListener('click', ()=>commit(false));
-$('#endBtn').addEventListener('click', finishRound);
+$('#endBtn').addEventListener('click', ()=>{ endedEarly = true; finishRound(); });
 
 // reveal pinyin
 function revealPinyin(){ if(showPinyin) $('#pinyin').classList.add('show'); }
@@ -567,11 +680,34 @@ function finishRound(){
     wrap.innerHTML = `<div class="perfect">🎉 All correct! 全对！</div>`;
     reviseBtn.style.display='none';
   }
+  // ---- Timed attempt resolution ----
+  const st = $('#sumTimer');
+  if(timerOn && attemptActive){
+    if(endedEarly){                               // ended round early -> attempt voided
+      stopTimer(); attemptActive=false;
+      st.className='sum-timer'; st.style.display='block';
+      st.textContent='⏱ Ended early — not recorded';
+    } else if(missed.length===0){                 // every word done incl. revisions -> finished!
+      const elapsed = Date.now()-attemptStart;
+      stopTimer(); attemptActive=false;
+      const best = recordTime(attemptCards, elapsed);
+      st.className='sum-timer'; st.style.display='block';
+      st.innerHTML = `⏱ Finished ${attemptCards} cards in <b>${fmtTime(elapsed)}</b>` +
+                     (best ? `<span class="best">🏆 New best time for ${attemptCards} cards!</span>` : '');
+      renderHighscores();
+    } else {                                       // words still to revise -> clock keeps running
+      st.className='sum-timer running'; st.style.display='block';
+      st.textContent = '⏱ ' + fmtTime(Date.now()-attemptStart);
+      reviseBtn.textContent = `Revise these ${missed.length} to stop the clock!`;
+    }
+  } else {
+    st.style.display='none';
+  }
+  endedEarly=false;
   show('summary');
 }
-
 $('#reviseBtn').addEventListener('click', ()=> startRound(shuffle([...missed]), true));
-$('#newBtn').addEventListener('click', ()=>{ refreshSetup(); show('setup'); });
+$('#newBtn').addEventListener('click', ()=>{ refreshSetup(); renderHighscores(); show('setup'); });
 </script>
 </body>
 </html>
